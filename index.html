@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#f4f6fb">
+    <title>Resume Studio | Online Resume Builder</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <main class="app-shell">
+        <header class="topbar">
+            <div class="brand" aria-label="Resume Studio">
+                <div class="brand-mark" aria-hidden="true">R</div>
+                <div>
+                    <p class="brand-name">Resume Studio</p>
+                    <p class="brand-caption">A clearer next step in your career</p>
+                </div>
+            </div>
+            <div class="topbar-actions">
+                <button class="share-button" id="share-button" type="button">
+                    <span aria-hidden="true">↗</span>
+                    Share
+                </button>
+                <button class="print-button" id="print-button" type="button" aria-label="Save your resume as a PDF using the browser print dialog">
+                <span aria-hidden="true">⤓</span>
+                    Save as PDF
+                </button>
+            </div>
+        </header>
+        <p class="action-status" id="action-status" role="status" aria-live="polite"></p>
+
+        <section class="intro" aria-labelledby="page-title">
+            <h1 id="page-title">Build your resume</h1>
+            <p>Add your details and see your professional resume take shape instantly.</p>
+        </section>
+
+        <nav class="mobile-view-switch" aria-label="Choose what to view">
+            <button type="button" class="view-switch-button is-active" data-view="editor" aria-pressed="true">Edit resume</button>
+            <button type="button" class="view-switch-button" data-view="preview" aria-pressed="false">Preview</button>
+        </nav>
+
+        <div class="workspace">
+            <section class="editor" aria-labelledby="editor-title">
+                <div class="panel-heading">
+                    <div>
+                        <h2 id="editor-title">Your information</h2>
+                        <p>Fill in the details you want to share.</p>
+                    </div>
+                    <span class="live-badge"><span class="live-dot" aria-hidden="true"></span>Live preview</span>
+                </div>
+
+                <section class="resume-settings" aria-labelledby="resume-settings-title">
+                    <div class="resume-settings-heading">
+                        <h3 id="resume-settings-title">Language and format</h3>
+                        <p>Choose the language for resume headings and a regional layout guide.</p>
+                    </div>
+                    <div class="resume-settings-grid">
+                        <div class="field">
+                            <label for="resume-language">Resume language</label>
+                            <select id="resume-language">
+                                <option value="en">English</option>
+                                <option value="fr">Français</option>
+                                <option value="es">Español</option>
+                                <option value="de">Deutsch</option>
+                            </select>
+                        </div>
+                        <div class="field">
+                            <label for="resume-format">Regional format</label>
+                            <select id="resume-format">
+                                <option value="us">US Resume</option>
+                                <option value="uk">UK CV</option>
+                                <option value="europass">Europass-inspired CV</option>
+                                <option value="canada">Canadian Resume</option>
+                                <option value="nigeria">Nigerian CV</option>
+                            </select>
+                        </div>
+                    </div>
+                    <p class="format-guidance" id="format-guidance" aria-live="polite"></p>
+                    <p class="format-disclaimer">Your own resume text is not machine-translated. Regional templates are practical guides, not official or legal requirements. Personal details such as age, marital status, and a photo are optional and generally best omitted unless specifically required.</p>
+                </section>
+
+                <form id="resume-form">
+                    <div class="form-grid">
+                        <div class="field field-wide">
+                            <label for="name">Full name</label>
+                            <input id="name" name="name" type="text" autocomplete="name" placeholder="e.g. Jordan Lee">
+                        </div>
+                        <div class="field field-wide">
+                            <label for="role">Professional title</label>
+                            <input id="role" name="role" type="text" placeholder="e.g. Product Designer">
+                        </div>
+                        <div class="field">
+                            <label for="email">Email</label>
+                            <input id="email" name="email" type="email" autocomplete="email" placeholder="jordan@example.com">
+                        </div>
+                        <div class="field">
+                            <label for="phone">Phone</label>
+                            <input id="phone" name="phone" type="tel" autocomplete="tel" placeholder="+1 (555) 012-3456">
+                        </div>
+                        <div class="field">
+                            <label for="location">Location <span>(optional)</span></label>
+                            <input id="location" name="location" type="text" autocomplete="address-level2" placeholder="e.g. Toronto, Canada">
+                        </div>
+                        <div class="field">
+                            <label for="website">Website or profile link <span>(optional)</span></label>
+                            <input id="website" name="website" type="url" placeholder="https://example.com">
+                        </div>
+                        <div class="field field-wide">
+                            <label for="summary">Professional summary</label>
+                            <textarea id="summary" name="summary" placeholder="A few sentences about your experience, strengths, and goals."></textarea>
+                        </div>
+                        <div class="field field-wide">
+                            <label for="education">Education</label>
+                            <textarea id="education" name="education" placeholder="Degree, school, and graduation year"></textarea>
+                        </div>
+                        <div class="field field-wide">
+                            <label for="experience">Work experience</label>
+                            <textarea id="experience" name="experience" placeholder="Role, company, dates, and key accomplishments"></textarea>
+                        </div>
+                        <div class="field field-wide">
+                            <label for="skills">Skills</label>
+                            <textarea id="skills" name="skills" placeholder="e.g. Research, Figma, Prototyping, Communication"></textarea>
+                            <p class="helper-text">Separate each skill with a comma or a new line.</p>
+                        </div>
+                        <div class="field field-wide">
+                            <label for="languages">Languages <span>(optional)</span></label>
+                            <textarea id="languages" name="languages" placeholder="e.g. English (fluent), French (conversational)"></textarea>
+                            <p class="helper-text">Include proficiency levels if relevant.</p>
+                        </div>
+                        <div class="field field-wide project-builder">
+                            <div class="project-heading">
+                                <div>
+                                    <h3>Projects</h3>
+                                    <p class="helper-text">Showcase work you are proud of. Project images are previewed locally and are not uploaded to a server.</p>
+                                </div>
+                                <button class="secondary-button" id="add-project-button" type="button">+ Add project</button>
+                            </div>
+                            <div class="project-list" id="project-list"></div>
+                        </div>
+                    </div>
+                </form>
+            </section>
+
+            <section class="preview-panel" aria-labelledby="preview-title">
+                <div class="preview-toolbar">
+                    <h2 id="preview-title">Resume preview</h2>
+                    <span>Updates as you type</span>
+                </div>
+                <div class="paper-wrap">
+                    <article class="resume-paper" aria-label="Live resume preview">
+                        <header class="resume-header">
+                            <h2 class="resume-name" id="preview-name">Your Name</h2>
+                            <p class="resume-role" id="preview-role" hidden></p>
+                            <div class="contact-line" id="preview-contact"></div>
+                        </header>
+                        <section class="resume-section">
+                            <h3 id="preview-summary-heading">Profile</h3>
+                            <p class="resume-copy is-empty" id="preview-summary">Your professional summary will appear here.</p>
+                        </section>
+                        <section class="resume-section">
+                            <h3 id="preview-experience-heading">Experience</h3>
+                            <p class="resume-copy is-empty" id="preview-experience">Add your work history to highlight your experience.</p>
+                        </section>
+                        <section class="resume-section">
+                            <h3 id="preview-education-heading">Education</h3>
+                            <p class="resume-copy is-empty" id="preview-education">Add your education and qualifications.</p>
+                        </section>
+                        <section class="resume-section">
+                            <h3 id="preview-skills-heading">Skills</h3>
+                            <div class="skill-list" id="preview-skills">
+                                <p class="resume-copy is-empty">Your skills will appear here.</p>
+                            </div>
+                        </section>
+                        <section class="resume-section" id="preview-projects-section">
+                            <h3 id="preview-projects-heading">Projects</h3>
+                            <div class="project-preview-list" id="preview-projects">
+                                <p class="resume-copy is-empty">Your projects will appear here.</p>
+                            </div>
+                        </section>
+                        <section class="resume-section" id="preview-languages-section" hidden>
+                            <h3 id="preview-languages-heading">Languages</h3>
+                            <p class="resume-copy" id="preview-languages"></p>
+                        </section>
+                    </article>
+                </div>
+            </section>
+        </div>
+
+        <section class="portfolio-generator" aria-labelledby="portfolio-generator-title">
+            <div class="portfolio-generator-heading">
+                <div>
+                    <p class="eyebrow">From resume to portfolio</p>
+                    <h2 id="portfolio-generator-title">Create your personal website</h2>
+                    <p>Turn your resume and projects into a responsive, standalone portfolio page.</p>
+                </div>
+                <span class="local-note">Generated on your device</span>
+            </div>
+            <div class="portfolio-generator-controls">
+                <div class="field portfolio-slug-field">
+                    <label for="portfolio-slug">Suggested site address</label>
+                    <div class="portfolio-domain-input">
+                        <input id="portfolio-slug" type="text" autocomplete="off" placeholder="your-name" aria-describedby="portfolio-domain-note">
+                        <span>.yoursite.com</span>
+                    </div>
+                </div>
+                <button class="workflow-action" id="generate-portfolio" type="button">Generate my website</button>
+            </div>
+            <p class="portfolio-domain-note" id="portfolio-domain-note">This is a suggested address only. The site is not published or hosted; download the HTML and deploy it with a hosting provider to use your own domain.</p>
+            <p class="portfolio-status" id="portfolio-status" role="status" aria-live="polite"></p>
+            <div class="portfolio-output" id="portfolio-output" hidden>
+                <div class="portfolio-output-toolbar">
+                    <h3>Website preview</h3>
+                    <button class="secondary-button" id="download-portfolio" type="button">Download website HTML</button>
+                </div>
+                <iframe id="portfolio-preview" title="Generated personal website preview" sandbox></iframe>
+            </div>
+        </section>
+
+        <section class="analytics-panel" aria-labelledby="analytics-title">
+            <div class="analytics-heading">
+                <div>
+                    <p class="eyebrow">Live feedback</p>
+                    <h2 id="analytics-title">Resume health</h2>
+                    <p>Practical writing signals to help you strengthen your resume.</p>
+                </div>
+                <span class="local-note">Calculated in your browser</span>
+            </div>
+
+            <div class="analytics-overview">
+                <div class="health-summary">
+                    <div class="health-score" id="health-score" role="meter" aria-label="Estimated resume strength" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                        <div class="health-score-center">
+                            <strong id="health-score-value">0</strong>
+                            <span>/ 100</span>
+                        </div>
+                    </div>
+                    <div>
+                        <p class="health-label" id="health-label">Add resume details to get started</p>
+                        <p class="health-caption">Estimated resume strength</p>
+                    </div>
+                </div>
+
+                <div class="analytics-stat">
+                    <span>Word count</span>
+                    <strong id="analytics-word-count">0</strong>
+                    <small>Resume content</small>
+                </div>
+                <div class="analytics-stat">
+                    <span>Readability</span>
+                    <strong id="analytics-readability">Not rated</strong>
+                    <small id="analytics-readability-detail">Add a few sentences</small>
+                </div>
+            </div>
+
+            <div class="analytics-details" aria-label="Resume writing signals">
+                <div class="analytics-detail">
+                    <div><strong>Action verbs</strong><span id="analytics-action-count">0 found</span></div>
+                    <span class="quality-rating" id="analytics-action-rating">Needs improvement</span>
+                </div>
+                <div class="analytics-detail">
+                    <div><strong>Keywords</strong><span id="analytics-keyword-detail">Add a job description to compare</span></div>
+                    <span class="quality-rating" id="analytics-keyword-rating">Not rated</span>
+                </div>
+                <div class="analytics-detail">
+                    <div><strong>Achievement density</strong><span id="analytics-impact-detail">0 quantified statements</span></div>
+                    <span class="quality-rating" id="analytics-impact-rating">Needs improvement</span>
+                </div>
+            </div>
+            <p class="analytics-tip" id="analytics-tip" aria-live="polite">Add experience, skills, and measurable outcomes to see tailored feedback.</p>
+            <p class="analytics-disclaimer">The score balances section completeness, action verbs, quantified outcomes, length, and readability; target keywords are included when a job description is available. These are writing suggestions, not a hiring prediction. Readability uses an approximate English-language formula.</p>
+        </section>
+
+        <section class="job-workflow" aria-labelledby="job-workflow-title">
+            <div class="workflow-heading">
+                <div>
+                    <p class="eyebrow">Your next career move</p>
+                    <h2 id="job-workflow-title">Job search, all in one place</h2>
+                    <p>Move from a tailored resume to interview prep, one step at a time.</p>
+                </div>
+                <span class="local-note">Your job search stays on this device</span>
+            </div>
+
+            <nav class="workflow-steps" aria-label="Job search workflow">
+                <button class="workflow-step is-active" type="button" data-workflow-step="0" aria-current="step">
+                    <span class="workflow-step-number">1</span><span>Create resume</span>
+                </button>
+                <button class="workflow-step" type="button" data-workflow-step="1">
+                    <span class="workflow-step-number">2</span><span>Optimize</span>
+                </button>
+                <button class="workflow-step" type="button" data-workflow-step="2">
+                    <span class="workflow-step-number">3</span><span>Cover letter</span>
+                </button>
+                <button class="workflow-step" type="button" data-workflow-step="3">
+                    <span class="workflow-step-number">4</span><span>Applications</span>
+                </button>
+                <button class="workflow-step" type="button" data-workflow-step="4">
+                    <span class="workflow-step-number">5</span><span>Interview prep</span>
+                </button>
+            </nav>
+
+            <div class="workflow-context">
+                <h3>Target job</h3>
+                <div class="job-context-grid">
+                    <div class="field">
+                        <label for="target-role">Job title</label>
+                        <input id="target-role" type="text" placeholder="e.g. Product Designer">
+                    </div>
+                    <div class="field">
+                        <label for="target-company">Company</label>
+                        <input id="target-company" type="text" placeholder="e.g. Acme Studio">
+                    </div>
+                    <div class="field field-wide">
+                        <label for="job-description">Job description</label>
+                        <textarea id="job-description" placeholder="Paste the job description to find relevant resume keywords and tailor your cover letter."></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <div class="workflow-panel" data-workflow-panel="0">
+                <h3>Start with your resume</h3>
+                <p>Fill in your experience and skills above. Your resume updates live as you work.</p>
+                <button class="workflow-action" id="go-to-resume" type="button">Go to resume editor</button>
+            </div>
+
+            <div class="workflow-panel" data-workflow-panel="1" hidden>
+                <h3>Match your resume to the role</h3>
+                <p>Compare important terms in the job description with your resume. Treat these as prompts, not a score or a substitute for your judgment.</p>
+                <button class="workflow-action" id="analyze-resume" type="button">Find keywords to consider</button>
+                <div class="workflow-result" id="optimization-result" aria-live="polite">
+                    Add a job description above, then analyze your resume.
+                </div>
+            </div>
+
+            <div class="workflow-panel" data-workflow-panel="2" hidden>
+                <h3>Draft a tailored cover letter</h3>
+                <p>Generate a starting draft from your resume and target job details. Review and personalize it before sending.</p>
+                <button class="workflow-action" id="generate-cover-letter" type="button">Generate draft</button>
+                <label class="cover-letter-label" for="cover-letter-output">Cover letter draft</label>
+                <textarea id="cover-letter-output" class="cover-letter-output" rows="10" placeholder="Your draft will appear here." readonly></textarea>
+                <button class="secondary-button" id="copy-cover-letter" type="button" disabled>Copy draft</button>
+                <p class="workflow-message" id="cover-letter-status" role="status" aria-live="polite"></p>
+            </div>
+
+            <div class="workflow-panel" data-workflow-panel="3" hidden>
+                <h3>Keep your applications organized</h3>
+                <p>Track roles and follow-ups locally in this browser. No account or server is used.</p>
+                <form id="application-form" class="application-form">
+                    <div class="field">
+                        <label for="application-date">Applied on</label>
+                        <input id="application-date" type="date" required>
+                    </div>
+                    <div class="field">
+                        <label for="application-status">Status</label>
+                        <select id="application-status">
+                            <option>Saved</option>
+                            <option>Applied</option>
+                            <option>Interview</option>
+                            <option>Offer</option>
+                            <option>Rejected</option>
+                        </select>
+                    </div>
+                    <div class="field field-wide">
+                        <label for="application-link">Job posting URL <span>(optional)</span></label>
+                        <input id="application-link" type="url" placeholder="https://example.com/jobs/123">
+                    </div>
+                    <button class="workflow-action field-wide" type="submit">Add to tracker</button>
+                </form>
+                <p class="workflow-message" id="application-status-message" role="status" aria-live="polite"></p>
+                <div class="application-list" id="application-list" aria-live="polite"></div>
+            </div>
+
+            <div class="workflow-panel" data-workflow-panel="4" hidden>
+                <h3>Get ready for the interview</h3>
+                <p>Use your target role to guide a focused practice session.</p>
+                <div class="interview-prompts" id="interview-prompts" aria-live="polite"></div>
+                <h4>Before the interview</h4>
+                <ul class="interview-checklist">
+                    <li><label><input type="checkbox"> Prepare a concise introduction</label></li>
+                    <li><label><input type="checkbox"> Choose examples that show your impact</label></li>
+                    <li><label><input type="checkbox"> Prepare questions for the hiring team</label></li>
+                    <li><label><input type="checkbox"> Review the role and company</label></li>
+                </ul>
+            </div>
+
+            <div class="workflow-navigation">
+                <button class="secondary-button" id="previous-workflow-step" type="button" disabled>Previous</button>
+                <span id="workflow-step-count" aria-live="polite">Step 1 of 5</span>
+                <button class="workflow-action" id="next-workflow-step" type="button">Next step</button>
+            </div>
+        </section>
+    </main>
+    <script src="javascript.js" defer></script>
+</body>
+</html>
