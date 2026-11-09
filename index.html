@@ -18,6 +18,10 @@
                 </div>
             </div>
             <div class="topbar-actions">
+                <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Switch to dark mode" aria-pressed="false">
+                    <span class="theme-toggle-icon" id="theme-toggle-icon" aria-hidden="true">☾</span>
+                    <span id="theme-toggle-label">Dark mode</span>
+                </button>
                 <button class="share-button" id="share-button" type="button">
                     <span aria-hidden="true">↗</span>
                     Share
@@ -49,6 +53,9 @@
                     </div>
                     <span class="live-badge"><span class="live-dot" aria-hidden="true"></span>Live preview</span>
                 </div>
+                <p class="autosave-status" id="autosave-status" role="status" aria-live="polite">
+                    Your resume text, certifications, and project details are saved only in this browser; uploaded project images must be selected again after reload.
+                </p>
 
                 <section class="resume-settings" aria-labelledby="resume-settings-title">
                     <div class="resume-settings-heading">
@@ -114,6 +121,16 @@
                             <label for="education">Education</label>
                             <textarea id="education" name="education" placeholder="Degree, school, and graduation year"></textarea>
                         </div>
+                        <div class="field field-wide certification-builder">
+                            <div class="project-heading">
+                                <div>
+                                    <h3>Certifications</h3>
+                                    <p class="helper-text">Add relevant certifications, licenses, and credentials.</p>
+                                </div>
+                                <button class="secondary-button" id="add-certification-button" type="button">+ Add certification</button>
+                            </div>
+                            <div class="certification-list" id="certification-list"></div>
+                        </div>
                         <div class="field field-wide">
                             <label for="experience">Work experience</label>
                             <textarea id="experience" name="experience" placeholder="Role, company, dates, and key accomplishments"></textarea>
@@ -165,6 +182,10 @@
                         <section class="resume-section">
                             <h3 id="preview-education-heading">Education</h3>
                             <p class="resume-copy is-empty" id="preview-education">Add your education and qualifications.</p>
+                        </section>
+                        <section class="resume-section" id="preview-certifications-section" hidden>
+                            <h3 id="preview-certifications-heading">Certifications</h3>
+                            <div class="certification-preview-list" id="preview-certifications"></div>
                         </section>
                         <section class="resume-section">
                             <h3 id="preview-skills-heading">Skills</h3>

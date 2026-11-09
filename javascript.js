@@ -2,10 +2,51 @@ const form = document.getElementById("resume-form");
 const fields = ["name", "role", "email", "phone", "location", "website", "summary", "experience", "education", "skills", "languages"];
 const projectList = document.getElementById("project-list");
 const previewProjects = document.getElementById("preview-projects");
+const certificationList = document.getElementById("certification-list");
+const previewCertifications = document.getElementById("preview-certifications");
 const languageSelect = document.getElementById("resume-language");
 const formatSelect = document.getElementById("resume-format");
 const formatGuidance = document.getElementById("format-guidance");
 let nextProjectId = 0;
+let nextCertificationId = 0;
+
+const themeToggle = document.getElementById("theme-toggle");
+const themeStorageKey = "resume-studio-theme";
+const themeStatus = document.getElementById("action-status");
+const resumeDraftStorageKey = "resume-studio-draft";
+const autosaveStatus = document.getElementById("autosave-status");
+let resumeSaveTimer = 0;
+
+function applyTheme(theme) {
+    const isDark = theme === "dark";
+    document.documentElement.dataset.theme = isDark ? "dark" : "light";
+    document.body.style.backgroundColor = isDark ? "#111827" : "#f4f6fb";
+    document.body.style.color = isDark ? "#edf2fb" : "#182338";
+    themeToggle.setAttribute("aria-pressed", String(isDark));
+    themeToggle.setAttribute("aria-label", `Switch to ${isDark ? "light" : "dark"} mode`);
+    document.getElementById("theme-toggle-label").textContent = isDark ? "Light mode" : "Dark mode";
+    document.getElementById("theme-toggle-icon").textContent = isDark ? "☀" : "☾";
+    document.querySelector('meta[name="theme-color"]').content = isDark ? "#111827" : "#f4f6fb";
+}
+
+let activeTheme = "light";
+try {
+    activeTheme = localStorage.getItem(themeStorageKey) === "dark" ? "dark" : "light";
+} catch (error) {
+    themeStatus.textContent = "Theme preference storage is unavailable; your selection will apply until you close this page.";
+}
+applyTheme(activeTheme);
+
+themeToggle.addEventListener("click", () => {
+    activeTheme = activeTheme === "dark" ? "light" : "dark";
+    applyTheme(activeTheme);
+    try {
+        localStorage.setItem(themeStorageKey, activeTheme);
+        themeStatus.textContent = "";
+    } catch (error) {
+        themeStatus.textContent = "Theme changed for this session, but could not be saved in this browser.";
+    }
+});
 
 const resumeTranslations = {
     en: {
@@ -13,6 +54,7 @@ const resumeTranslations = {
         experience: "Experience",
         education: "Education",
         skills: "Skills",
+        certifications: "Certifications",
         projects: "Projects",
         languages: "Languages",
         emptyName: "Your Name",
@@ -27,6 +69,7 @@ const resumeTranslations = {
         experience: "Expérience professionnelle",
         education: "Formation",
         skills: "Compétences",
+        certifications: "Certifications",
         projects: "Projets",
         languages: "Langues",
         emptyName: "Votre nom",
@@ -41,6 +84,7 @@ const resumeTranslations = {
         experience: "Experiencia profesional",
         education: "Formación",
         skills: "Competencias",
+        certifications: "Certificaciones",
         projects: "Proyectos",
         languages: "Idiomas",
         emptyName: "Tu nombre",
@@ -55,6 +99,7 @@ const resumeTranslations = {
         experience: "Berufserfahrung",
         education: "Ausbildung",
         skills: "Kenntnisse",
+        certifications: "Zertifizierungen",
         projects: "Projekte",
         languages: "Sprachen",
         emptyName: "Ihr Name",
@@ -123,6 +168,7 @@ function updateResumeSettings() {
     document.getElementById("preview-summary-heading").textContent = labels.summary;
     document.getElementById("preview-experience-heading").textContent = labels.experience;
     document.getElementById("preview-education-heading").textContent = labels.education;
+    document.getElementById("preview-certifications-heading").textContent = labels.certifications;
     document.getElementById("preview-skills-heading").textContent = labels.skills;
     document.getElementById("preview-projects-heading").textContent = labels.projects;
     document.getElementById("preview-languages-heading").textContent = labels.languages;
@@ -130,8 +176,169 @@ function updateResumeSettings() {
     updatePreview();
 }
 
-languageSelect.addEventListener("change", updateResumeSettings);
-formatSelect.addEventListener("change", updateResumeSettings);
+function setAutosaveStatus(message, state) {
+    autosaveStatus.textContent = message;
+    autosaveStatus.classList.toggle("is-saving", state === "saving");
+    autosaveStatus.classList.toggle("is-saved", state === "saved");
+    autosaveStatus.classList.toggle("is-error", state === "error");
+}
+
+function getResumeDraft() {
+    const savedFields = Object.fromEntries(
+        fields.map((name) => [name, form.elements.namedItem(name).value])
+    );
+    const projects = getProjectCards().map((card) => ({
+        title: card.querySelector('[data-project-field="title"]').value,
+        description: card.querySelector('[data-project-field="description"]').value,
+        link: card.querySelector('[data-project-field="link"]').value
+    }));
+    const certifications = getCertificationCards().map((card) => ({
+        name: card.querySelector('[data-certification-field="name"]').value,
+        issuer: card.querySelector('[data-certification-field="issuer"]').value,
+        date: card.querySelector('[data-certification-field="date"]').value,
+        credentialId: card.querySelector('[data-certification-field="credential-id"]').value,
+        url: card.querySelector('[data-certification-field="url"]').value
+    }));
+
+    return {
+        version: 1,
+        fields: savedFields,
+        language: languageSelect.value,
+        format: formatSelect.value,
+        portfolioSlug: portfolioSlugInput.value,
+        projects,
+        certifications
+    };
+}
+
+function saveResumeDraft() {
+    try {
+        localStorage.setItem(resumeDraftStorageKey, JSON.stringify(getResumeDraft()));
+        const hasProjectImages = getProjectCards().some((card) =>
+            card.querySelector('[data-project-field="image"]').files.length > 0
+        );
+        const savedAt = new Intl.DateTimeFormat(undefined, {
+            hour: "numeric",
+            minute: "2-digit"
+        }).format(new Date());
+        setAutosaveStatus(
+            `Saved locally at ${savedAt}.${hasProjectImages ? " Project images need to be selected again after reload." : ""}`,
+            "saved"
+        );
+    } catch (error) {
+        setAutosaveStatus(
+            "Could not save your resume in this browser. Check available storage and try editing again.",
+            "error"
+        );
+    }
+}
+
+function scheduleResumeSave() {
+    setAutosaveStatus("Saving your changes…", "saving");
+    window.clearTimeout(resumeSaveTimer);
+    resumeSaveTimer = window.setTimeout(saveResumeDraft, 400);
+}
+
+function loadResumeDraft() {
+    let saved;
+    try {
+        saved = localStorage.getItem(resumeDraftStorageKey);
+    } catch (error) {
+        setAutosaveStatus("Autosave is unavailable in this browser. Your changes will not persist after closing this page.", "error");
+        return null;
+    }
+    if (!saved) return null;
+
+    try {
+        const draft = JSON.parse(saved);
+        const allowedLanguages = Array.from(languageSelect.options).map((option) => option.value);
+        const allowedFormats = Array.from(formatSelect.options).map((option) => option.value);
+        if (!draft || typeof draft !== "object" || draft.version !== 1 ||
+            !draft.fields || typeof draft.fields !== "object" || Array.isArray(draft.fields) ||
+            !Array.isArray(draft.projects) || draft.projects.length > 100 ||
+            (draft.certifications !== undefined &&
+                (!Array.isArray(draft.certifications) || draft.certifications.length > 100)) ||
+            !allowedLanguages.includes(draft.language) || !allowedFormats.includes(draft.format) ||
+            typeof draft.portfolioSlug !== "string") {
+            throw new Error("The saved resume has an unsupported format.");
+        }
+
+        const restoredFields = {};
+        fields.forEach((name) => {
+            const value = draft.fields[name];
+            if (value !== undefined && typeof value !== "string") {
+                throw new Error("The saved resume contains invalid field data.");
+            }
+            if (typeof value === "string") restoredFields[name] = value;
+        });
+        const projects = draft.projects.map((project) => {
+            if (!project || typeof project !== "object" ||
+                ["title", "description", "link"].some((key) =>
+                    project[key] !== undefined && typeof project[key] !== "string"
+                )) {
+                throw new Error("The saved resume contains invalid project data.");
+            }
+            return {
+                title: project.title || "",
+                description: project.description || "",
+                link: project.link || ""
+            };
+        });
+        const certifications = (draft.certifications || []).map((certification) => {
+            if (!certification || typeof certification !== "object" ||
+                ["name", "issuer", "date", "credentialId", "url"].some((key) =>
+                    certification[key] !== undefined && typeof certification[key] !== "string"
+                )) {
+                throw new Error("The saved resume contains invalid certification data.");
+            }
+            return {
+                name: certification.name || "",
+                issuer: certification.issuer || "",
+                date: certification.date || "",
+                credentialId: certification.credentialId || "",
+                url: certification.url || ""
+            };
+        });
+        return {
+            fields: restoredFields,
+            language: draft.language,
+            format: draft.format,
+            portfolioSlug: draft.portfolioSlug,
+            projects,
+            certifications
+        };
+    } catch (error) {
+        setAutosaveStatus("A saved resume could not be restored. Your next edits can create a new local draft.", "error");
+        return null;
+    }
+}
+
+function restoreResumeDraft(draft) {
+    if (!draft) return false;
+    Object.entries(draft.fields).forEach(([name, value]) => {
+        form.elements.namedItem(name).value = value;
+    });
+    languageSelect.value = draft.language;
+    formatSelect.value = draft.format;
+    portfolioSlugInput.value = draft.portfolioSlug;
+    portfolioSlugWasEdited = Boolean(draft.portfolioSlug);
+    draft.projects.forEach((project) => addProject(project));
+    draft.certifications.forEach((certification) => addCertification(certification));
+    setAutosaveStatus(
+        "Draft restored from this browser. Changes are saved automatically; uploaded project images must be selected again.",
+        "saved"
+    );
+    return true;
+}
+
+languageSelect.addEventListener("change", () => {
+    updateResumeSettings();
+    scheduleResumeSave();
+});
+formatSelect.addEventListener("change", () => {
+    updateResumeSettings();
+    scheduleResumeSave();
+});
 
 function setPreviewText(elementId, value, emptyText) {
     const element = document.getElementById(elementId);
@@ -142,6 +349,51 @@ function setPreviewText(elementId, value, emptyText) {
 
 function getProjectCards() {
     return Array.from(projectList.querySelectorAll(".project-card"));
+}
+
+function getCertificationCards() {
+    return Array.from(certificationList.querySelectorAll(".certification-card"));
+}
+
+function addCertification(certification = {}) {
+    const certificationId = nextCertificationId++;
+    const card = document.createElement("section");
+    card.className = "project-card certification-card";
+    card.innerHTML = `
+        <div class="project-card-heading">
+            <strong>Certification ${getCertificationCards().length + 1}</strong>
+            <button class="remove-project-button" type="button" aria-label="Remove certification">Remove</button>
+        </div>
+        <div class="field">
+            <label for="certification-name-${certificationId}">Certification name</label>
+            <input id="certification-name-${certificationId}" data-certification-field="name" type="text" placeholder="e.g. AWS Certified Solutions Architect">
+        </div>
+        <div class="field">
+            <label for="certification-issuer-${certificationId}">Issuing organization <span>(optional)</span></label>
+            <input id="certification-issuer-${certificationId}" data-certification-field="issuer" type="text" placeholder="e.g. Amazon Web Services">
+        </div>
+        <div class="form-grid certification-details">
+            <div class="field">
+                <label for="certification-date-${certificationId}">Issue date <span>(optional)</span></label>
+                <input id="certification-date-${certificationId}" data-certification-field="date" type="month">
+            </div>
+            <div class="field">
+                <label for="certification-credential-id-${certificationId}">Credential ID <span>(optional)</span></label>
+                <input id="certification-credential-id-${certificationId}" data-certification-field="credential-id" type="text" placeholder="e.g. ABC123">
+            </div>
+        </div>
+        <div class="field">
+            <label for="certification-url-${certificationId}">Credential URL <span>(optional)</span></label>
+            <input id="certification-url-${certificationId}" data-certification-field="url" type="url" placeholder="https://example.com/credential">
+        </div>
+    `;
+    certificationList.append(card);
+    card.querySelector('[data-certification-field="name"]').value = certification.name || "";
+    card.querySelector('[data-certification-field="issuer"]').value = certification.issuer || "";
+    card.querySelector('[data-certification-field="date"]').value = certification.date || "";
+    card.querySelector('[data-certification-field="credential-id"]').value = certification.credentialId || "";
+    card.querySelector('[data-certification-field="url"]').value = certification.url || "";
+    updatePreview();
 }
 
 function getJobKeywords(description) {
@@ -200,12 +452,18 @@ function updateAnalytics() {
         title: card.querySelector('[data-project-field="title"]').value.trim(),
         description: card.querySelector('[data-project-field="description"]').value.trim()
     })).filter((project) => project.title || project.description);
+    const certificationContent = getCertificationCards().map((card) =>
+        ["name", "issuer", "credential-id"].map((field) =>
+            card.querySelector(`[data-certification-field="${field}"]`).value.trim()
+        ).filter(Boolean).join(" ")
+    ).filter(Boolean);
     const content = [
         values.summary,
         values.experience,
         values.education,
         values.skills,
         values.languages,
+        ...certificationContent,
         ...projectContent.flatMap((project) => [project.title, project.description])
     ].filter(Boolean).join(" ");
     const words = content.match(/\b[\p{L}\p{N}]+(?:['’][\p{L}]+)?\b/gu) || [];
@@ -349,7 +607,7 @@ function updateAnalytics() {
     document.getElementById("analytics-tip").textContent = tip;
 }
 
-function addProject() {
+function addProject(project = {}) {
     const projectId = nextProjectId++;
     const card = document.createElement("section");
     card.className = "project-card";
@@ -378,6 +636,9 @@ function addProject() {
         </div>
     `;
     projectList.append(card);
+    card.querySelector('[data-project-field="title"]').value = project.title || "";
+    card.querySelector('[data-project-field="description"]').value = project.description || "";
+    card.querySelector('[data-project-field="link"]').value = project.link || "";
     updatePreview();
 }
 
@@ -429,6 +690,50 @@ function updatePreview() {
     setPreviewText("preview-summary", values.summary, labels.emptySummary);
     setPreviewText("preview-experience", values.experience, labels.emptyExperience);
     setPreviewText("preview-education", values.education, labels.emptyEducation);
+
+    previewCertifications.replaceChildren();
+    const certifications = getCertificationCards().map((card) => ({
+        name: card.querySelector('[data-certification-field="name"]').value.trim(),
+        issuer: card.querySelector('[data-certification-field="issuer"]').value.trim(),
+        date: card.querySelector('[data-certification-field="date"]').value.trim(),
+        credentialId: card.querySelector('[data-certification-field="credential-id"]').value.trim(),
+        url: card.querySelector('[data-certification-field="url"]').value.trim()
+    })).filter((certification) =>
+        certification.name || certification.issuer || certification.date ||
+        certification.credentialId || certification.url
+    );
+    certifications.forEach((certification) => {
+        const certificationCard = document.createElement("article");
+        certificationCard.className = "certification-preview-card";
+        const title = document.createElement("h4");
+        title.textContent = certification.name || certification.issuer || "Certification";
+        certificationCard.append(title);
+        const details = [
+            certification.issuer,
+            certification.date,
+            certification.credentialId ? `ID: ${certification.credentialId}` : ""
+        ].filter(Boolean);
+        if (details.length) {
+            const detail = document.createElement("p");
+            detail.className = "resume-copy";
+            detail.textContent = details.join(" · ");
+            certificationCard.append(detail);
+        }
+        const credentialUrl = getPortfolioUrl(certification.url);
+        if (credentialUrl) {
+            const link = document.createElement("a");
+            link.className = "project-preview-link";
+            link.href = credentialUrl;
+            link.target = "_blank";
+            link.rel = "noopener noreferrer";
+            link.textContent = languageSelect.value === "fr" ? "Vérifier le justificatif"
+                : languageSelect.value === "es" ? "Verificar credencial"
+                    : languageSelect.value === "de" ? "Nachweis ansehen" : "Verify credential";
+            certificationCard.append(link);
+        }
+        previewCertifications.append(certificationCard);
+    });
+    document.getElementById("preview-certifications-section").hidden = certifications.length === 0;
 
     const skills = document.getElementById("preview-skills");
     skills.replaceChildren();
@@ -523,6 +828,7 @@ function revokeProjectImage(card) {
 projectList.addEventListener("input", (event) => {
     if (event.target.matches('[data-project-field="title"], [data-project-field="description"], [data-project-field="link"]')) {
         updatePreview();
+        scheduleResumeSave();
     }
 });
 
@@ -545,6 +851,7 @@ projectList.addEventListener("change", (event) => {
     } else {
         card.dataset.imageUrl = URL.createObjectURL(file);
         status.textContent = `${file.name} selected. Previewed locally; not uploaded.`;
+        setAutosaveStatus("Resume text is saved locally. Uploaded project images must be selected again after reload.", "saved");
     }
     updatePreview();
 });
@@ -560,10 +867,32 @@ projectList.addEventListener("click", (event) => {
     card.remove();
     updateProjectLabels();
     updatePreview();
+    scheduleResumeSave();
+});
+
+certificationList.addEventListener("input", updatePreview);
+certificationList.addEventListener("input", scheduleResumeSave);
+certificationList.addEventListener("click", (event) => {
+    const removeButton = event.target.closest(".remove-project-button");
+    if (!removeButton) return;
+    removeButton.closest(".certification-card").remove();
+    getCertificationCards().forEach((card, index) => {
+        card.querySelector(".project-card-heading strong").textContent = `Certification ${index + 1}`;
+    });
+    updatePreview();
+    scheduleResumeSave();
 });
 
 form.addEventListener("input", updatePreview);
-document.getElementById("add-project-button").addEventListener("click", addProject);
+form.addEventListener("input", scheduleResumeSave);
+document.getElementById("add-project-button").addEventListener("click", () => {
+    addProject();
+    scheduleResumeSave();
+});
+document.getElementById("add-certification-button").addEventListener("click", () => {
+    addCertification();
+    scheduleResumeSave();
+});
 document.getElementById("print-button").addEventListener("click", () => window.print());
 
 const workspace = document.querySelector(".workspace");
@@ -603,6 +932,29 @@ function getResumeText() {
             lines.push("", heading, content);
         }
     });
+
+    const certifications = getCertificationCards().map((card) => ({
+        name: card.querySelector('[data-certification-field="name"]').value.trim(),
+        issuer: card.querySelector('[data-certification-field="issuer"]').value.trim(),
+        date: card.querySelector('[data-certification-field="date"]').value.trim(),
+        credentialId: card.querySelector('[data-certification-field="credential-id"]').value.trim(),
+        url: card.querySelector('[data-certification-field="url"]').value.trim()
+    })).filter((certification) =>
+        certification.name || certification.issuer || certification.date ||
+        certification.credentialId || certification.url
+    );
+    if (certifications.length) {
+        lines.push("", labels.certifications);
+        certifications.forEach((certification) => {
+            lines.push(certification.name || certification.issuer || "Certification");
+            [
+                certification.issuer,
+                certification.date,
+                certification.credentialId ? `ID: ${certification.credentialId}` : "",
+                certification.url
+            ].filter(Boolean).forEach((detail) => lines.push(detail));
+        });
+    }
 
     const projects = getProjectCards().map((card) => ({
         title: card.querySelector('[data-project-field="title"]').value.trim(),
@@ -683,7 +1035,7 @@ function readPortfolioImage(file) {
     });
 }
 
-function createPortfolioHtml(values, projects) {
+function createPortfolioHtml(values, projects, certifications) {
     const labels = getResumeLabels();
     const language = languageSelect.value;
     const title = values.name || labels.emptyName;
@@ -724,6 +1076,17 @@ function createPortfolioHtml(values, projects) {
             .map((skill) => `<li>${escapePortfolioHtml(skill)}</li>`).join("")}</ul></section>`);
     }
 
+    if (certifications.length) {
+        sections.push(`<section><h2>${escapePortfolioHtml(labels.certifications)}</h2><div class="certifications">${certifications.map((certification) => {
+            const credentialUrl = getPortfolioUrl(certification.url);
+            const details = [certification.issuer, certification.date,
+                certification.credentialId ? `ID: ${certification.credentialId}` : ""]
+                .filter(Boolean).map((detail) => `<p>${escapePortfolioHtml(detail)}</p>`).join("");
+            return `<article class="certification-card"><h3>${escapePortfolioHtml(certification.name || "Certification")}</h3>${details}${credentialUrl
+                ? `<a href="${escapePortfolioHtml(credentialUrl)}" target="_blank" rel="noopener noreferrer">Verify credential</a>` : ""}</article>`;
+        }).join("")}</div></section>`);
+    }
+
     if (projects.length) {
         sections.push(`<section><h2>${escapePortfolioHtml(labels.projects)}</h2><div class="projects">${projects.map((project) => {
             const projectLink = getPortfolioUrl(project.link);
@@ -757,6 +1120,7 @@ a{color:#465feb;text-decoration:none}a:hover{text-decoration:underline}.intro{ma
 section{margin-top:34px}section h2{margin:0 0 12px;color:#263650;font-size:13px;font-weight:800;letter-spacing:.12em;text-transform:uppercase}
 section p{margin:0;color:#536078;font-size:14px;line-height:1.8;overflow-wrap:anywhere}.tags{display:flex;flex-wrap:wrap;gap:8px;margin:0;padding:0;list-style:none}
 .tags li{padding:7px 10px;border-radius:7px;background:#eef1ff;color:#485bbd;font-size:12px;font-weight:650}.projects{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:14px}
+.certifications{display:grid;gap:12px}.certification-card{padding:14px;border:1px solid #e4e9f1;border-radius:10px;background:#fff}.certification-card h3{margin:0 0 6px;color:#263650;font-size:14px}.certification-card p{margin:3px 0;font-size:12px}.certification-card a{font-size:12px;font-weight:700}
 .project-card{overflow:hidden;padding:16px;border:1px solid #e4e9f1;border-radius:12px;background:#fff}.project-card img{display:block;width:100%;max-height:210px;margin-bottom:12px;border-radius:8px;object-fit:cover}
 .project-card h3{margin:0 0 8px;color:#263650;font-size:15px}.project-card p{margin-bottom:10px;font-size:13px}.project-card>a{font-size:12px;font-weight:700}
 footer{margin-top:48px;padding-top:16px;border-top:1px solid #e4e9f1;color:#8792a4;font-size:11px}
@@ -790,6 +1154,7 @@ let generatedPortfolioUrl = "";
 portfolioSlugInput.addEventListener("input", () => {
     portfolioSlugWasEdited = true;
     portfolioSlugInput.value = toPortfolioSlug(portfolioSlugInput.value);
+    scheduleResumeSave();
 });
 form.elements.namedItem("name").addEventListener("input", () => {
     if (!portfolioSlugWasEdited) {
@@ -827,7 +1192,17 @@ portfolioGenerateButton.addEventListener("click", async () => {
         const populatedProjects = projects.filter((project) =>
             project.title || project.description || getPortfolioUrl(project.link) || project.image
         );
-        generatedPortfolioHtml = createPortfolioHtml(values, populatedProjects);
+        const certifications = getCertificationCards().map((card) => ({
+            name: card.querySelector('[data-certification-field="name"]').value.trim(),
+            issuer: card.querySelector('[data-certification-field="issuer"]').value.trim(),
+            date: card.querySelector('[data-certification-field="date"]').value.trim(),
+            credentialId: card.querySelector('[data-certification-field="credential-id"]').value.trim(),
+            url: card.querySelector('[data-certification-field="url"]').value.trim()
+        })).filter((certification) =>
+            certification.name || certification.issuer || certification.date ||
+            certification.credentialId || certification.url
+        );
+        generatedPortfolioHtml = createPortfolioHtml(values, populatedProjects, certifications);
         if (generatedPortfolioUrl) URL.revokeObjectURL(generatedPortfolioUrl);
         generatedPortfolioUrl = URL.createObjectURL(new Blob([generatedPortfolioHtml], { type: "text/html;charset=utf-8" }));
         portfolioPreview.src = generatedPortfolioUrl;
@@ -1217,5 +1592,14 @@ function updateInterviewPrompts() {
 targetRoleInput.addEventListener("input", updateInterviewPrompts);
 updateInterviewPrompts();
 
+const restoredResumeDraft = loadResumeDraft();
+restoreResumeDraft(restoredResumeDraft);
 updateResumeSettings();
-addProject();
+if (!restoredResumeDraft || restoredResumeDraft.projects.length === 0) {
+    addProject();
+}
+
+window.addEventListener("pagehide", () => {
+    window.clearTimeout(resumeSaveTimer);
+    saveResumeDraft();
+});
