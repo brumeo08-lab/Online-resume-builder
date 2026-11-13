@@ -1151,34 +1151,24 @@ let portfolioSlugWasEdited = false;
 let generatedPortfolioHtml = "";
 let generatedPortfolioUrl = "";
 
-portfolioSlugInput.addEventListener("input", () => {
-    portfolioSlugWasEdited = true;
-    portfolioSlugInput.value = toPortfolioSlug(portfolioSlugInput.value);
-    scheduleResumeSave();
-});
-form.elements.namedItem("name").addEventListener("input", () => {
-    if (!portfolioSlugWasEdited) {
-        portfolioSlugInput.value = toPortfolioSlug(form.elements.namedItem("name").value);
-    }
-});
-
 portfolioGenerateButton.addEventListener("click", async () => {
     portfolioStatus.classList.remove("is-error", "is-success");
     const name = form.elements.namedItem("name").value.trim();
     const slug = toPortfolioSlug(portfolioSlugInput.value || name);
     if (!slug) {
-        portfolioStatus.textContent = "Add your name or enter a site name before generating your portfolio.";
+        portfolioStatus.textContent = "Add your name or enter a site name before generating";
         portfolioStatus.classList.add("is-error");
         form.elements.namedItem("name").focus();
         return;
     }
 
     portfolioSlugInput.value = slug;
-    portfolioStatus.textContent = "Generating your standalone website...";
+    portfolioStatus.textContent = "Generating your portfolio...";
     portfolioGenerateButton.disabled = true;
+
     try {
         const values = Object.fromEntries(
-            fields.map((fieldName) => [fieldName, form.elements.namedItem(fieldName).value.trim()])
+            fields.map((fieldName) => [fieldName, form.elements.namedItem(fieldName).value])
         );
         const projects = await Promise.all(getProjectCards().map(async (card) => {
             const imageFile = card.querySelector('[data-project-field="image"]').files[0];
@@ -1189,9 +1179,11 @@ portfolioGenerateButton.addEventListener("click", async () => {
                 image: await readPortfolioImage(imageFile)
             };
         }));
+
         const populatedProjects = projects.filter((project) =>
             project.title || project.description || getPortfolioUrl(project.link) || project.image
         );
+
         const certifications = getCertificationCards().map((card) => ({
             name: card.querySelector('[data-certification-field="name"]').value.trim(),
             issuer: card.querySelector('[data-certification-field="issuer"]').value.trim(),
@@ -1202,17 +1194,31 @@ portfolioGenerateButton.addEventListener("click", async () => {
             certification.name || certification.issuer || certification.date ||
             certification.credentialId || certification.url
         );
+
+        // 1. Generate the HTML string and update local preview
         generatedPortfolioHtml = createPortfolioHtml(values, populatedProjects, certifications);
+
         if (generatedPortfolioUrl) URL.revokeObjectURL(generatedPortfolioUrl);
         generatedPortfolioUrl = URL.createObjectURL(new Blob([generatedPortfolioHtml], { type: "text/html;charset=utf-8" }));
         portfolioPreview.src = generatedPortfolioUrl;
         portfolioOutput.hidden = false;
-        portfolioStatus.textContent = `Website generated for preview. Your suggested address is ${slug}.yoursite.com, but it is not published yet. Download the HTML and deploy it with a hosting provider to make it public.`;
+
+        // 2. Deploy to Netlify
+        portfolioStatus.textContent = "Publishing to the cloud...";
+        const liveUrl = await deployToNetlify(generatedPortfolioHtml);
+
+        // 3. Display the live clickable link safely
         portfolioStatus.classList.add("is-success");
+        portfolioStatus.textContent = "Success! Your live website is ready: ";
+        const link = document.createElement("a");
+        link.href = liveUrl;
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+        link.textContent = liveUrl;
+        portfolioStatus.append(link);
     } catch (error) {
-        portfolioStatus.textContent = error instanceof Error
-            ? error.message
-            : "Could not generate the website. Check the project images and try again.";
+        console.error(error);
+        portfolioStatus.textContent = `Local preview generated, but cloud deployment failed: ${error.message}`;
         portfolioStatus.classList.add("is-error");
     } finally {
         portfolioGenerateButton.disabled = false;
@@ -1602,4 +1608,26 @@ if (!restoredResumeDraft || restoredResumeDraft.projects.length === 0) {
 window.addEventListener("pagehide", () => {
     window.clearTimeout(resumeSaveTimer);
     saveResumeDraft();
-});
+    });
+async function sha1Hex(text) {
+    const data = new TextEncoder().encode(text);
+    const hashBuffer = await crypto.subtle.digest("SHA-1", data);
+    return Array.from(new Uint8Array(hashBuffer))
+        .map((byte) => byte.toString(16).padStart(2, "0"))
+        .join("");
+}
+
+async function deployToNetlify(htmlContent) {
+    const response = await fetch("/.netlify/functions/deploy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ htmlContent })
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+        throw new Error(data.error || `Deployment failed with status ${response.status}`);
+    }
+
+    return data.url;
+}
