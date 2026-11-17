@@ -1153,6 +1153,7 @@ let generatedPortfolioUrl = "";
 
 portfolioGenerateButton.addEventListener("click", async () => {
     portfolioStatus.classList.remove("is-error", "is-success");
+    const liveUrl = await deployToNetlify(generatedPortfolioHtml, slug);
     const name = form.elements.namedItem("name").value.trim();
     const slug = toPortfolioSlug(portfolioSlugInput.value || name);
     if (!slug) {
@@ -1622,6 +1623,20 @@ async function deployToNetlify(htmlContent) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ htmlContent })
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+        throw new Error(data.error || `Deployment failed with status ${response.status}`);
+    }
+
+    return data.url;
+}
+async function deployToNetlify(htmlContent, slug) {
+    const response = await fetch("/.netlify/functions/deploy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ htmlContent, slug })
     });
 
     const data = await response.json();
