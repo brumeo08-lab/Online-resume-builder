@@ -1151,9 +1151,12 @@ let portfolioSlugWasEdited = false;
 let generatedPortfolioHtml = "";
 let generatedPortfolioUrl = "";
 
+let isDeploying = false;
+
 portfolioGenerateButton.addEventListener("click", async () => {
+    if (isDeploying) return;
+
     portfolioStatus.classList.remove("is-error", "is-success");
-    const liveUrl = await deployToNetlify(generatedPortfolioHtml, slug);
     const name = form.elements.namedItem("name").value.trim();
     const slug = toPortfolioSlug(portfolioSlugInput.value || name);
     if (!slug) {
@@ -1163,9 +1166,14 @@ portfolioGenerateButton.addEventListener("click", async () => {
         return;
     }
 
+    isDeploying = true;
+    let deployedSuccessfully = false;
+    const originalText = portfolioGenerateButton.textContent;
+
     portfolioSlugInput.value = slug;
     portfolioStatus.textContent = "Generating your portfolio...";
     portfolioGenerateButton.disabled = true;
+    portfolioGenerateButton.textContent = "Deploying...";
 
     try {
         const values = Object.fromEntries(
@@ -1204,9 +1212,9 @@ portfolioGenerateButton.addEventListener("click", async () => {
         portfolioPreview.src = generatedPortfolioUrl;
         portfolioOutput.hidden = false;
 
-        // 2. Deploy to Netlify
+        // 2. Deploy to Netlify (passes both HTML and slug)
         portfolioStatus.textContent = "Publishing to the cloud...";
-        const liveUrl = await deployToNetlify(generatedPortfolioHtml);
+        const liveUrl = await deployToNetlify(generatedPortfolioHtml, slug);
 
         // 3. Display the live clickable link safely
         portfolioStatus.classList.add("is-success");
@@ -1217,15 +1225,26 @@ portfolioGenerateButton.addEventListener("click", async () => {
         link.rel = "noopener noreferrer";
         link.textContent = liveUrl;
         portfolioStatus.append(link);
+
+        deployedSuccessfully = true;
+        portfolioGenerateButton.textContent = "Published! (Wait 10s)";
+        setTimeout(() => {
+            portfolioGenerateButton.disabled = false;
+            portfolioGenerateButton.textContent = originalText;
+            isDeploying = false;
+        }, 10000);
     } catch (error) {
         console.error(error);
         portfolioStatus.textContent = `Local preview generated, but cloud deployment failed: ${error.message}`;
         portfolioStatus.classList.add("is-error");
     } finally {
-        portfolioGenerateButton.disabled = false;
+        if (!deployedSuccessfully) {
+            portfolioGenerateButton.disabled = false;
+            portfolioGenerateButton.textContent = originalText;
+            isDeploying = false;
+        }
     }
 });
-
 portfolioDownloadButton.addEventListener("click", () => {
     if (!generatedPortfolioHtml) {
         portfolioStatus.textContent = "Generate a website preview before downloading.";
@@ -1618,20 +1637,6 @@ async function sha1Hex(text) {
         .join("");
 }
 
-async function deployToNetlify(htmlContent) {
-    const response = await fetch("/.netlify/functions/deploy", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ htmlContent })
-    });
-
-    const data = await response.json();
-    if (!response.ok) {
-        throw new Error(data.error || `Deployment failed with status ${response.status}`);
-    }
-
-    return data.url;
-}
 async function deployToNetlify(htmlContent, slug) {
     const response = await fetch("/.netlify/functions/deploy", {
         method: "POST",
